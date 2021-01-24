@@ -69,7 +69,34 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $user = User::findOrFail($id);
+
+        $rules = [
+            'email' => 'email|unique:users',
+            'password' => 'min:6|confirmed',
+            'admin' => 'in' . User::Admin_User . ',' . User::Regular_User,
+        ];
+
+        if ($request->has('name')) {
+            $user->name = $request->name;
+        }
+
+        if ($request->has('email') && $request->email != $user->email) {
+            $user->verified = User::UnVerified_User;
+            $user->verification_token = User::generateVerificationCode();
+            $user->email = $request->email;
+        }
+        $user->admin = User::Regular_User;
+        if ($request->has('password')) {
+            $user->password = bcrypt($request->password);
+        }
+
+        if (!$user->isDirty()) {
+            return response()->json(['error' => 'You need to spesify a different value to update', 'code' => 422], 422);
+        }
+
+        $user->save();
+        return response()->json(['data' => $user], 200);
     }
 
     /**
@@ -80,6 +107,9 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return response()->json(['data' => $user], 200);
     }
 }
